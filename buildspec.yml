@@ -16,6 +16,3 @@ phases:
       - echo Build successful, preparing deployment...
       - zip -r app.zip dist node_modules package.json
       - aws s3 cp app.zip s3://my-nestjs-app-deployment/
-artifacts:
-  files:
-    - app.zip
