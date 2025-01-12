@@ -106,5 +106,5 @@ jobs:
 
           # Iniciar o reiniciar la aplicación con PM2
           echo "Starting/restarting application..."
-          pm2 start dist/app.js --name my-app || pm2 restart my-app
+          pm2 start dist/main.js --name my-app || pm2 restart my-app
           '
