@@ -86,17 +86,25 @@ jobs:
           # Verificación de la ubicación del archivo de salida 'main.js'
           echo "Verifying build output..."
 
-          # Asegúrate de que el archivo 'main.js' esté presente en el directorio adecuado
+          # Comprobar si 'main.js' está en el directorio de salida esperado
           if [ -f "$REPO_DIR/dist/main.js" ]; then
             echo "Found main.js in dist folder"
           else
             echo "Error: main.js not found in dist folder. Searching for build output..."
-            # Verifica si el archivo se encuentra en otro directorio de salida
+            # Verificar si el archivo de salida está en otra ubicación
             find . -name 'main.js'
+            exit 1
+          fi
+
+          # Asegurarse de que el archivo de entrada esté configurado correctamente
+          if [ -f "$REPO_DIR/dist/app.js" ]; then
+            echo "Found app.js in dist folder"
+          else
+            echo "Error: app.js not found in dist folder. Please verify the build configuration."
             exit 1
           fi
 
           # Iniciar o reiniciar la aplicación con PM2
           echo "Starting/restarting application..."
-          pm2 start dist/main.js --name my-app || pm2 restart my-app
+          pm2 start dist/app.js --name my-app || pm2 restart my-app
           '
