@@ -97,10 +97,10 @@ jobs:
           fi
 
           # Asegurarse de que el archivo de entrada esté configurado correctamente
-          if [ -f "$REPO_DIR/dist/app.js" ]; then
-            echo "Found app.js in dist folder"
+          if [ -f "$REPO_DIR/dist/main.js" ]; then
+            echo "Found main.js in dist folder"
           else
-            echo "Error: app.js not found in dist folder. Please verify the build configuration."
+            echo "Error: main.js not found in dist folder. Please verify the build configuration."
             exit 1
           fi
 
