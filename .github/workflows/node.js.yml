@@ -74,5 +74,5 @@ jobs:
           npm install
 
           echo "Starting/restarting application..."
-          pm2 restart dist/main.js || pm2 start dist/main.js
+          npm run start:prod
           '
