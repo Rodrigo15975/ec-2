@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common'
 import { CreateTaskDto } from './dto/create-task.dto'
 import { UpdateTaskDto } from './dto/update-task.dto'
+import { CacheService } from './cache.service'
 
 @Injectable()
 export class TaskService {
+  constructor(private readonly cacheService: CacheService) {}
+
   private tasks: CreateTaskDto[] = [
     {
       id: '1',
@@ -12,12 +15,18 @@ export class TaskService {
     },
   ]
 
-  create(createTaskDto: CreateTaskDto) {
+  async create(createTaskDto: CreateTaskDto) {
     this.tasks.push(createTaskDto)
+    await this.cacheService.delete('tasks')
     return createTaskDto
   }
 
-  findAll() {
+  async findAll() {
+    const data = await this.cacheService.get<string>('tasks')
+
+    if (data) return data
+    await this.cacheService.set<CreateTaskDto[]>('tasks', this.tasks, '5m')
+
     return this.tasks
   }
 
@@ -31,7 +40,8 @@ export class TaskService {
     return task
   }
 
-  remove(id: string) {
+  async remove(id: string) {
     this.tasks = this.tasks.filter((task) => task.id !== id)
+    await this.cacheService.delete('tasks')
   }
 }
