@@ -11,7 +11,6 @@ jobs:
     strategy:
       matrix:
         node-version: [18.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
       - uses: actions/checkout@v4
@@ -30,6 +29,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Verify dependencies
+        run: npm ls
+
       - name: Build application
         run: npm run build --if-present
 
@@ -44,65 +46,50 @@ jobs:
           HOST: ${{ secrets.EC2_HOST }}
           USER: ${{ secrets.EC2_USER }}
         run: |
-          # Crear y proteger la clave privada para la conexión SSH
           echo "$PRIVATE_KEY" > github-ec2.pem && chmod 600 github-ec2.pem
 
-          # Conexión SSH al servidor EC2
           ssh -o StrictHostKeyChecking=no -i github-ec2.pem ${USER}@${HOST} '
+            echo "Current directory: $(pwd)"
+            echo "Listing home directory:"
+            ls -la ~
 
-          # Verificación del directorio actual y listado del directorio home
-          echo "Current directory: $(pwd)"
-          echo "Listing home directory:"
-          ls -la ~
+            echo "Installing Node.js..."
+            if ! command -v nvm &> /dev/null; then
+              curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
+              export NVM_DIR="$HOME/.nvm"
+              [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            fi
+            nvm install node
 
-          # Instalación de Node.js si no está disponible
-          echo "Installing Node.js..."
-          if ! command -v nvm &> /dev/null; then
-            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # Esto carga nvm
-          fi
-          nvm install node
+            echo "Installing PM2..."
+            if ! command -v pm2 &> /dev/null; then
+              npm install -g pm2
+            fi
 
-          # Instalación de PM2 si no está disponible
-          echo "Installing PM2..."
-          if ! command -v pm2 &> /dev/null; then
-            npm install -g pm2
-          fi
+            REPO_URL="https://github.com/Rodrigo15975/ec-2"
+            BRANCH="master"
+            REPO_DIR="$HOME/Rodrigo15975/ec-2"
 
-          # Definir variables de entorno para el repositorio y la rama
-          REPO_URL="https://github.com/Rodrigo15975/ec-2"
-          BRANCH="master"
-          REPO_DIR="$HOME/Rodrigo15975/ec-2"
+            if [ -d "$REPO_DIR/.git" ]; then
+              cd "$REPO_DIR"
+              git pull origin "$BRANCH"
+            else
+              git clone "$REPO_URL" "$REPO_DIR"
+              cd "$REPO_DIR"
+            fi
 
-          # Verificar si el repositorio ya está clonado
-          if [ -d "$REPO_DIR/.git" ]; then
-            cd "$REPO_DIR"
-            git pull origin "$BRANCH"
-          else
-            git clone "$REPO_URL" "$REPO_DIR"
-            cd "$REPO_DIR"
-          fi
+            npm install
 
-          # Instalación de dependencias
-          echo "Installing dependencies..."
-          npm install
+            echo "Verifying build output..."
+            ls -la dist
 
-          # Verificación de la ubicación del archivo de salida 'main.js'
-          echo "Verifying build output..."
+            if [ -f "dist/main.js" ]; then
+              echo "Found main.js in dist folder"
+            else
+              echo "Error: main.js not found in dist folder. Please verify your build configuration."
+              exit 1
+            fi
 
-          # Listar los archivos en el directorio dist
-          ls -la dist
-
-          # Comprobar si 'main.js' está en el directorio de salida esperado
-          if [ -f "dist/main.js" ]; then
-            echo "Found main.js in dist folder"
-          else
-            echo "Error: main.js not found in dist folder. Please verify your build configuration."
-            exit 1
-          fi
-
-          # Iniciar o reiniciar la aplicación con PM2
-          echo "Starting/restarting application..."
-          pm2 start dist/main.js --name my-app || pm2 restart my-app
+            echo "Starting/restarting application..."
+            pm2 start dist/main.js --name my-app || pm2 restart my-app
           '
