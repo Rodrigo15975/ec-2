@@ -13,8 +13,9 @@ import { CacheService } from './cache.service'
     {
       provide: 'CACHE_INSTANCE',
       useFactory: () => {
-        // const secondary = new KeyvRedis('redis://3.83.146.231:3000')
-        const secondary = new KeyvRedis('redis://localhost:6379')
+        const secondary = new KeyvRedis('redis://3.83.146.231:6379')
+
+        // const secondary = new KeyvRedis('redis://localhost:6379')
         return new Cacheable({ secondary, ttl: '4h' })
       },
     },
