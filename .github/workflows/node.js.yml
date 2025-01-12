@@ -21,19 +21,11 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
 
-      - name: Show secrets
-        run: |
-          echo "Current HOST: ${{ secrets.EC2_HOST }}"
-          echo "Current USER: ${{ secrets.EC2_USER }}"
-          echo "Current PRIVATE_KEY: ${{ secrets.EC2_PRIVATE_KEY }}"
-
-      - run: npm ci
-
-      - name: Verify dependencies
-        run: npm ls
+      - name: Install dependencies
+        run: npm ci
 
       - name: Build application
-        run: npm run build --if-present
+        run: npm run build
 
       - name: Verify build output
         run: |
@@ -50,46 +42,66 @@ jobs:
 
           ssh -o StrictHostKeyChecking=no -i github-ec2.pem ${USER}@${HOST} '
             echo "Current directory: $(pwd)"
-            echo "Listing home directory:"
-            ls -la ~
-
-            echo "Installing Node.js..."
+            
+            # Setup NVM and Node.js
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            
             if ! command -v nvm &> /dev/null; then
               curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
               export NVM_DIR="$HOME/.nvm"
               [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             fi
-            nvm install node
+            
+            nvm install 18
+            nvm use 18
 
-            echo "Installing PM2..."
+            # Install PM2 globally if not present
             if ! command -v pm2 &> /dev/null; then
               npm install -g pm2
             fi
 
-            REPO_URL="https://github.com/Rodrigo15975/ec-2"
-            BRANCH="master"
-            REPO_DIR="$HOME/Rodrigo15975/ec-2"
+            # Setup application directory
+            APP_DIR="$HOME/nestjs-app"
+            mkdir -p $APP_DIR
+            cd $APP_DIR
 
-            if [ -d "$REPO_DIR/.git" ]; then
-              cd "$REPO_DIR"
-              git pull origin "$BRANCH"
+            # Clone/pull repository
+            if [ -d ".git" ]; then
+              git pull origin master
             else
-              git clone "$REPO_URL" "$REPO_DIR"
-              cd "$REPO_DIR"
+              git clone https://github.com/Rodrigo15975/ec-2.git .
             fi
 
-            npm install
+            # Install dependencies and build
+            npm ci
+            npm run build
 
-            echo "Verifying build output..."
-            ls -la dist
-
-            if [ -f "dist/main.js" ]; then
-              echo "Found main.js in dist folder"
+            # Verify the build output and start the application
+            if [ -d "dist" ]; then
+              echo "Build directory exists"
+              ls -la dist
+              
+              # Find the main file
+              MAIN_FILE=$(find dist -name "main.js" -type f)
+              
+              if [ -n "$MAIN_FILE" ]; then
+                echo "Found main file at: $MAIN_FILE"
+                # Start/restart the application with PM2
+                if pm2 list | grep -q "nestjs-app"; then
+                  pm2 restart nestjs-app
+                else
+                  pm2 start $MAIN_FILE --name nestjs-app
+                fi
+                
+                pm2 save
+                echo "Application deployed successfully"
+              else
+                echo "Error: main.js not found in dist folder"
+                exit 1
+              fi
             else
-              echo "Error: main.js not found in dist folder. Please verify your build configuration."
+              echo "Error: dist directory not found"
               exit 1
             fi
-
-            echo "Starting/restarting application..."
-            pm2 start dist/main.js --name my-app || pm2 restart my-app
           '
