@@ -83,12 +83,16 @@ jobs:
           echo "Installing dependencies..."
           npm install
 
-          # Verificación de la ubicación del archivo 'main.js'
+          # Verificación de la ubicación del archivo de salida 'main.js'
           echo "Verifying build output..."
+
+          # Asegúrate de que el archivo 'main.js' esté presente en el directorio adecuado
           if [ -f "$REPO_DIR/dist/main.js" ]; then
             echo "Found main.js in dist folder"
           else
-            echo "Error: main.js not found in dist folder"
+            echo "Error: main.js not found in dist folder. Searching for build output..."
+            # Verifica si el archivo se encuentra en otro directorio de salida
+            find . -name 'main.js'
             exit 1
           fi
 
