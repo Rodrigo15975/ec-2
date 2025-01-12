@@ -15,66 +15,84 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
+
       - name: Show secrets
         run: |
-          echo "Current HOST: ${{ secrets.EC2_HOST  }} "
-          echo "Current USER: ${{ secrets.EC2_USER  }} "
-          echo "Current PRIVATE_KEY: ${{ secrets.EC2_PRIVATE_KEY  }} "
+          echo "Current HOST: ${{ secrets.EC2_HOST }}"
+          echo "Current USER: ${{ secrets.EC2_USER }}"
+          echo "Current PRIVATE_KEY: ${{ secrets.EC2_PRIVATE_KEY }}"
+
       - run: npm ci
+
       - name: Build application
         run: npm run build --if-present
+
       - name: Deploy to EC2
         env:
           PRIVATE_KEY: ${{ secrets.EC2_PRIVATE_KEY }}
           HOST: ${{ secrets.EC2_HOST }}
           USER: ${{ secrets.EC2_USER }}
         run: |
+          # Crear y proteger la clave privada para la conexión SSH
           echo "$PRIVATE_KEY" > github-ec2.pem && chmod 600 github-ec2.pem
+
+          # Conexión SSH al servidor EC2
           ssh -o StrictHostKeyChecking=no -i github-ec2.pem ${USER}@${HOST} '
+
+          # Verificación del directorio actual y listado del directorio home
           echo "Current directory: $(pwd)"
           echo "Listing home directory:"
           ls -la ~
 
+          # Instalación de Node.js si no está disponible
           echo "Installing Node.js..."
           if ! command -v nvm &> /dev/null; then
             curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
             export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # Esto carga nvm
           fi
           nvm install node
 
-
+          # Instalación de PM2 si no está disponible
           echo "Installing PM2..."
           if ! command -v pm2 &> /dev/null; then
-          npm install -g pm2
+            npm install -g pm2
           fi
 
+          # Definir variables de entorno para el repositorio y la rama
           REPO_URL="https://github.com/Rodrigo15975/ec-2"
           BRANCH="master"
           REPO_DIR="$HOME/Rodrigo15975/ec-2"
 
+          # Verificar si el repositorio ya está clonado
           if [ -d "$REPO_DIR/.git" ]; then
-          cd "$REPO_DIR"
-          git pull origin "$BRANCH"
+            cd "$REPO_DIR"
+            git pull origin "$BRANCH"
           else
             git clone "$REPO_URL" "$REPO_DIR"
             cd "$REPO_DIR"
           fi
 
-          cd "$REPO_DIR"
+          # Instalación de dependencias
+          echo "Installing dependencies..."
           npm install
 
-          cd ~/github-aws-ec2/ec-2
-          git pull origin master
-          npm install
+          # Verificación de la ubicación del archivo 'main.js'
+          echo "Verifying build output..."
+          if [ -f "$REPO_DIR/dist/main.js" ]; then
+            echo "Found main.js in dist folder"
+          else
+            echo "Error: main.js not found in dist folder"
+            exit 1
+          fi
 
+          # Iniciar o reiniciar la aplicación con PM2
           echo "Starting/restarting application..."
-          pm2 start dist/main.js --name my-app
-
-
+          pm2 start dist/main.js --name my-app || pm2 restart my-app
           '
