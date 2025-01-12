@@ -66,7 +66,7 @@ jobs:
             cd "$REPO_DIR"
           fi
 
-          cd "$REPO_DIR/ec-2"
+          cd "$REPO_DIR"
           npm install
 
           cd ~/github-aws-ec2/ec-2
@@ -74,6 +74,7 @@ jobs:
           npm install
 
           echo "Starting/restarting application..."
-          npm run start:prod
+          pm2 start dist/main.js --name my-app
+
 
           '
