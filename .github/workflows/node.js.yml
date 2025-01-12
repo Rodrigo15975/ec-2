@@ -53,8 +53,8 @@ jobs:
               [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             fi
             
-            nvm install 18
-            nvm use 18
+            nvm install --lts 
+            # nvm use 18
 
             # Install PM2 globally if not present
             if ! command -v pm2 &> /dev/null; then
