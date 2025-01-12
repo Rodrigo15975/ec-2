@@ -1,10 +1,17 @@
-FROM node:18-alpine
+# Usa una imagen base de Node.js
+FROM node:18
 
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
+# Establece el directorio de trabajo
+WORKDIR /usr/src/app
+
+# Copia los archivos de la aplicación al contenedor
 COPY . .
-RUN npm run build
 
+# Instala las dependencias
+RUN npm install
+
+# Expone el puerto 3000
 EXPOSE 3000
-CMD ["npm", "run", "start:prod"]
+
+# Inicia la aplicación
+CMD ["npm", "run", "start"]
