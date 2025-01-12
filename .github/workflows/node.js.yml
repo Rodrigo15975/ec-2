@@ -75,4 +75,5 @@ jobs:
 
           echo "Starting/restarting application..."
           npm run start:prod
+
           '
