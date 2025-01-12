@@ -24,6 +24,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify dependencies
+        run: |
+          echo "Listing node_modules folder contents"
+          ls -la node_modules
+
+      - name: Format code
+        run: npm run lint
+
       - name: Build application
         run: npm run build
 
